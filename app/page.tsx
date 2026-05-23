@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+﻿import { supabase } from '@/lib/supabase'
 
 const poolColors: Record<string, { bg: string; text: string }> = {
   A: { bg: '#4A7FB5', text: '#d4e6f7' },
@@ -7,7 +7,12 @@ const poolColors: Record<string, { bg: string; text: string }> = {
   D: { bg: '#9e3e44', text: '#f5cdd0' },
 }
 
-async function getStandings() {
+const TOURNAMENTS: Record<string, string> = {
+  men: 'a1b2c3d4-0000-0000-0000-000000000001',
+  women: 'a1b2c3d4-0000-0000-0000-000000000002',
+}
+
+async function getStandings(tournamentId: string) {
   const { data } = await supabase
     .from('pool_standings')
     .select(`
@@ -18,26 +23,37 @@ async function getStandings() {
       point_diff,
       team:tournament_teams(name, seed)
     `)
-    .eq('tournament_id', 'a1b2c3d4-0000-0000-0000-000000000001')
+    .eq('tournament_id', tournamentId)
     .order('pool')
     .order('pool_rank')
   return data
 }
 
-export default async function Home() {
-  const standings = await getStandings()
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ div?: string }>
+}) {
+  const { div } = await searchParams
+  const activeDiv = div === 'women' ? 'women' : 'men'
+  const tournamentId = TOURNAMENTS[activeDiv]
+  const standings = await getStandings(tournamentId)
   const pools = ['A', 'B', 'C', 'D']
+  const divLabel = activeDiv === 'women' ? "Women" : "Men"
 
   return (
     <div>
       <div className="mb-6">
         <div className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full mb-3" style={{ background: '#2e2e2e', color: '#aaa' }}>
-          🏆 Live Tournament
+          Live Tournament
         </div>
-        <h1 className="text-3xl font-bold text-white mb-1">2026 D-I College Championships</h1>
-        <p style={{ color: '#888' }}>Men's Division · Rockford, IL · May 22–25</p>
+        <h1 className="text-3xl font-bold text-white mb-2">2026 D-I College Championships</h1>
+        <p style={{ color: '#888', marginBottom: '16px' }}>{divLabel} Division · Rockford, IL · May 22-25</p>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <a href="/?div=men" style={activeDiv === 'men' ? { background: '#f9f6f0', color: '#1a1a1a', padding: '6px 16px', borderRadius: '999px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' } : { background: '#2e2e2e', color: '#888', padding: '6px 16px', borderRadius: '999px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}>Men</a>
+          <a href="/?div=women" style={activeDiv === 'women' ? { background: '#f9f6f0', color: '#1a1a1a', padding: '6px 16px', borderRadius: '999px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' } : { background: '#2e2e2e', color: '#888', padding: '6px 16px', borderRadius: '999px', fontSize: '14px', fontWeight: 500, textDecoration: 'none' }}>Women</a>
+        </div>
       </div>
-
       <div className="grid grid-cols-2 gap-4 mb-8">
         {pools.map(pool => {
           const teams = standings?.filter(s => s.pool === pool) ?? []
@@ -68,7 +84,7 @@ export default async function Home() {
                       <td className="px-2 py-2.5 text-center" style={{ color: '#444' }}>{row.losses}</td>
                       <td className="px-2 py-2.5 text-center font-medium">
                         <span style={{ color: row.point_diff > 0 ? '#2d7a4f' : row.point_diff < 0 ? '#c0392b' : '#999' }}>
-                          {row.point_diff > 0 ? `+${row.point_diff}` : row.point_diff}
+                          {row.point_diff > 0 ? '+' + row.point_diff : row.point_diff}
                         </span>
                       </td>
                     </tr>
